@@ -1,0 +1,43 @@
+🚀 P2P Network Benchmark Report
+===============================
+
+📊 Test: Single File Transfer
+   Duration: 1.24s
+   Files Transferred: 1
+   Total Bytes: 51200 (0.05 MB)
+   Throughput: 0.04 MB/s
+   Avg Latency: 1236.00 ms
+   Success Rate: 100.0%
+   Peer Count: 2
+
+📊 Test: File Size 1024 bytes
+   Duration: 1.71s
+   Files Transferred: 1
+   Total Bytes: 1024 (0.00 MB)
+   Throughput: 0.00 MB/s
+   Avg Latency: 1714.00 ms
+   Success Rate: 100.0%
+   Peer Count: 2
+
+📊 Test: File Size 10240 bytes
+   Duration: 1.72s
+   Files Transferred: 1
+   Total Bytes: 10240 (0.01 MB)
+   Throughput: 0.01 MB/s
+   Avg Latency: 1717.00 ms
+   Success Rate: 100.0%
+   Peer Count: 2
+
+📊 Test: File Size 102400 bytes
+   Duration: 1.75s
+   Files Transferred: 1
+   Total Bytes: 102400 (0.10 MB)
+   Throughput: 0.06 MB/s
+   Avg Latency: 1754.00 ms
+   Success Rate: 100.0%
+   Peer Count: 2
+
+📈 Overall Summary:
+   Average Throughput: 0.03 MB/s
+   Average Success Rate: 100.0%
+   Total Tests: 4

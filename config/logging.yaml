@@ -1,0 +1,18 @@
+version: 1
+formatters:
+  default:
+    format: "{time} [{level}] [{file}:{line}] {message}"
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: default
+  file:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: default
+    filename: "p2p.log"
+loggers:
+  "":
+    level: INFO
+    handlers: [console, file]

@@ -1,0 +1,58 @@
+[
+  {
+    "test_name": "Single File Transfer",
+    "total_duration": {
+      "secs": 1,
+      "nanos": 236842309
+    },
+    "files_transferred": 1,
+    "total_bytes": 51200,
+    "throughput_mbps": 0.039478052007679176,
+    "avg_latency_ms": 1236.0,
+    "success_rate": 100.0,
+    "peer_count": 2,
+    "errors": []
+  },
+  {
+    "test_name": "File Size 1024 bytes",
+    "total_duration": {
+      "secs": 1,
+      "nanos": 714636753
+    },
+    "files_transferred": 1,
+    "total_bytes": 1024,
+    "throughput_mbps": 0.0005695448311669311,
+    "avg_latency_ms": 1714.0,
+    "success_rate": 100.0,
+    "peer_count": 2,
+    "errors": []
+  },
+  {
+    "test_name": "File Size 10240 bytes",
+    "total_duration": {
+      "secs": 1,
+      "nanos": 717704445
+    },
+    "files_transferred": 1,
+    "total_bytes": 10240,
+    "throughput_mbps": 0.005685276665858544,
+    "avg_latency_ms": 1717.0,
+    "success_rate": 100.0,
+    "peer_count": 2,
+    "errors": []
+  },
+  {
+    "test_name": "File Size 102400 bytes",
+    "total_duration": {
+      "secs": 1,
+      "nanos": 754164745
+    },
+    "files_transferred": 1,
+    "total_bytes": 102400,
+    "throughput_mbps": 0.05567108236461565,
+    "avg_latency_ms": 1754.0,
+    "success_rate": 100.0,
+    "peer_count": 2,
+    "errors": []
+  }
+]

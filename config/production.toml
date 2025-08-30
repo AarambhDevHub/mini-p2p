@@ -1,0 +1,22 @@
+[network]
+port = 8080
+max_peers = 100
+discovery_port = 9999
+connection_timeout = 600
+
+[storage]
+shared_dir = "/opt/p2p/shared"
+chunk_size = 131072  # 128KB
+max_file_size = 10737418240  # 10GB
+
+[transfer]
+max_concurrent_downloads = 10
+max_concurrent_uploads = 20
+chunk_request_timeout = 60
+max_download_speed = 10485760   # 10 MB/s
+max_upload_speed = 5242880     # 5 MB/s
+
+[logging]
+level = "info"
+target = "file"
+file_path = "/var/log/mini-p2p/app.log"

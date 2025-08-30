@@ -1,0 +1,19 @@
+[network]
+port = 8080
+max_peers = 10
+discovery_port = 9999
+connection_timeout = 60
+
+[storage]
+shared_dir = "./dev_shared"
+chunk_size = 32768  # 32KB for faster testing
+max_file_size = 104857600  # 100MB
+
+[transfer]
+max_concurrent_downloads = 3
+max_concurrent_uploads = 5
+chunk_request_timeout = 10
+
+[logging]
+level = "debug"
+target = "stdout"

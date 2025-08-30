@@ -1,0 +1,21 @@
+[network]
+port = 8080
+max_peers = 50
+discovery_port = 9999
+connection_timeout = 300
+
+[storage]
+shared_dir = "./shared"
+chunk_size = 65536  # 64KB
+max_file_size = 1073741824  # 1GB
+
+[transfer]
+max_concurrent_downloads = 5
+max_concurrent_uploads = 10
+chunk_request_timeout = 30
+max_download_speed = 0  # 0 = unlimited (bytes/sec)
+max_upload_speed = 0    # 0 = unlimited (bytes/sec)
+
+[logging]
+level = "info"
+target = "stdout"
