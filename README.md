@@ -37,7 +37,7 @@ Recent benchmark results demonstrate excellent performance:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/mini-p2p.git
+git clone https://github.com/AarambhDevHub/mini-p2p.git
 cd mini-p2p
 
 # Build the project
@@ -272,6 +272,13 @@ cargo doc --open
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## ☕ Support & Community
+
+If you find Ignitia helpful, consider supporting the project:
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/aarambhdevhub)
+
 
 ## 🙏 Acknowledgments
 
