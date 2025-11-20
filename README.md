@@ -6,8 +6,11 @@ A high-performance, BitTorrent-like peer-to-peer file sharing system implemented
 
 - **Distributed Architecture**: No central server required - fully decentralized P2P network
 - **Automatic Peer Discovery**: UDP-based discovery service for finding peers on the local network
+- **DHT (Distributed Hash Table)**: Kademlia-inspired DHT for decentralized peer discovery
 - **Chunked File Transfer**: Files are split into verified chunks for efficient and reliable transfer
 - **Data Integrity**: SHA-256 hash verification ensures file integrity during transfers
+- **Bandwidth Throttling**: Token bucket rate limiting for upload/download speed control
+- **NAT Traversal**: Automatic UPnP port mapping and STUN for public IP discovery
 - **High Performance**: Optimized for low latency (~1.7s) with 100% reliability
 - **Command Line Interface**: Easy-to-use CLI for node management and file operations
 - **Cross-Platform**: Built with Rust and Tokio for excellent cross-platform support
@@ -49,11 +52,29 @@ cargo test
 
 ## 🎯 Quick Start
 
-### 1. Start a Seed Node (with Discovery Service)
-
+### Option 1: Start with Local Discovery (UDP Broadcast)
 ```bash
 # Start the first node with discovery service enabled
 cargo run -- start --port 8080 --dir ./shared --discovery --name "SeedNode"
+```
+
+### Option 2: Start with DHT (Decentralized Discovery)
+```bash
+# Start the first node with DHT enabled
+cargo run -- start --port 8080 --dir ./shared --name "SeedNode" --dht
+
+# Start a second node and bootstrap via the first node
+cargo run -- start --port 8081 --dir ./shared2 --name "PeerNode" --dht --dht-bootstrap "127.0.0.1:6881"
+```
+
+### Option 3: Start with NAT Traversal (Public Network)
+```bash
+# Start a node with NAT traversal enabled (default)
+# This will attempt to map ports on your router for external access
+cargo run -- start --port 8080 --dir ./shared --name "PublicNode"
+
+# To disable NAT traversal (e.g., for local testing only)
+cargo run -- start --port 8080 --dir ./shared --name "LocalNode" --no-nat
 ```
 
 ### 2. Start Additional Peer Nodes
@@ -85,11 +106,15 @@ cargo run -- download --hash <file_hash> --output downloaded_file.txt --peer 127
 cargo run -- start [OPTIONS]
 
 Options:
-  -p, --port <PORT>           Port to listen on [default: 8080]
-  -d, --dir <DIRECTORY>       Directory to share files from [default: ./shared]
-  -b, --bootstrap <ADDRESS>   Bootstrap peer address (host:port)
-  -n, --name <NAME>           Node name for identification
-      --discovery             Enable discovery service (only one per network)
+  -p, --port <PORT>                    Port to listen on [default: 8080]
+  -d, --dir <DIRECTORY>                Directory to share files from [default: ./shared]
+  -b, --bootstrap <ADDRESS>            Bootstrap peer address (host:port)
+  -n, --name <NAME>                    Node name for identification
+      --discovery                      Enable discovery service (only one per network)
+      --dht                            Enable DHT for decentralized peer discovery
+      --dht-port <PORT>                DHT UDP port [default: 6881]
+      --dht-bootstrap <ADDRESS>        DHT bootstrap node address (host:port)
+      --no-nat                         Disable NAT traversal (UPnP/STUN)
 ```
 
 ### Download File
@@ -165,9 +190,47 @@ discovery_interval = 30
 chunk_size = 65536
 max_file_size = 1073741824  # 1GB
 
+[bandwidth]
+max_upload_speed = 1048576    # 1 MB/s (optional, omit for unlimited)
+max_download_speed = 2097152  # 2 MB/s (optional, omit for unlimited)
+
 [logging]
 level = "info"
 ```
+
+### Bandwidth Throttling
+
+Control upload and download speeds programmatically:
+
+```rust
+use mini_p2p::Config;
+use std::path::PathBuf;
+
+let config = Config {
+    port: 8080,
+    shared_dir: PathBuf::from("./shared"),
+    bootstrap_peer: None,
+    node_name: "MyNode".to_string(),
+    discovery_port: Some(9999),
+    max_upload_speed: Some(10_000),   // 10 KB/s upload limit
+    max_download_speed: Some(50_000), // 50 KB/s download limit
+};
+```
+
+**Features:**
+- Token bucket algorithm for smooth rate limiting
+- Configurable burst capacity (2x the rate limit)
+- Per-connection throttling
+- Zero overhead when disabled (None = unlimited)
+
+### NAT Traversal
+
+The system automatically handles NAT traversal to allow nodes behind routers to communicate:
+
+1.  **UPnP (Universal Plug and Play)**: Automatically maps TCP (file transfer) and UDP (DHT) ports on supported routers.
+2.  **STUN (Session Traversal Utilities for NAT)**: Discovers the node's public IP address using Google's public STUN servers.
+
+This is enabled by default. To disable it (e.g., for local-only testing), use the `--no-nat` flag.
 
 ## 🧪 Running Examples
 
@@ -256,14 +319,13 @@ cargo doc --open
 ## 🐛 Known Issues
 
 - **Small File Overhead**: ~1.7s connection overhead affects small files
-- **NAT Traversal**: Limited support for peers behind NAT/firewalls
 - **Discovery Scope**: UDP discovery limited to local network segment
 
 ## 🔮 Roadmap
 
-- [ ] DHT (Distributed Hash Table) implementation
-- [ ] NAT traversal and hole punching
-- [ ] Bandwidth throttling and QoS
+- [x] DHT (Distributed Hash Table) implementation
+- [x] NAT traversal and hole punching
+- [x] Bandwidth throttling and QoS
 - [ ] Web interface for node management
 - [ ] Torrent file format support
 - [ ] Encryption and authentication

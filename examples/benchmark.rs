@@ -110,6 +110,12 @@ async fn benchmark_single_file_transfer(
         bootstrap_peer: None,
         node_name: "BenchmarkSeed".to_string(),
         discovery_port: Some(discovery_port),
+        max_upload_speed: None,
+        max_download_speed: None,
+        dht_enabled: false,
+        dht_port: Some(6881),
+        dht_bootstrap: None,
+        nat_traversal_enabled: true,
     };
 
     let seed_handle = start_benchmark_node(seed_config, "seed".to_string()).await;
@@ -131,6 +137,12 @@ async fn benchmark_single_file_transfer(
             bootstrap_peer: Some(format!("127.0.0.1:{}", seed_port)),
             node_name: "BenchmarkDownloader".to_string(),
             discovery_port: None,
+            max_upload_speed: None,
+            max_download_speed: None,
+            dht_enabled: false,
+            dht_port: Some(6881),
+            dht_bootstrap: None,
+            nat_traversal_enabled: true,
         };
 
         perform_benchmark_download(download_config).await
@@ -214,6 +226,12 @@ async fn benchmark_multiple_file_sizes(
                 bootstrap_peer: None,
                 node_name: format!("SizeBenchmarkSeed_{}", file_size),
                 discovery_port: Some(discovery_port),
+                max_upload_speed: None,
+                max_download_speed: None,
+                dht_enabled: false,
+                dht_port: Some(6881),
+                dht_bootstrap: None,
+                nat_traversal_enabled: true,
             };
 
             let seed_handle = start_benchmark_node(seed_config, "seed".to_string()).await;
@@ -231,6 +249,12 @@ async fn benchmark_multiple_file_sizes(
                 bootstrap_peer: Some(format!("127.0.0.1:{}", seed_port)),
                 node_name: format!("SizeBenchmarkDownloader_{}", file_size),
                 discovery_port: None,
+                max_upload_speed: None,
+                max_download_speed: None,
+                dht_enabled: false,
+                dht_port: Some(6881),
+                dht_bootstrap: None,
+                nat_traversal_enabled: true,
             };
 
             let result = perform_benchmark_download(download_config).await;

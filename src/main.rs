@@ -30,6 +30,18 @@ enum Commands {
         /// Enable discovery service (only one node per network should enable this)
         #[arg(long)]
         discovery: bool,
+        /// Enable DHT for decentralized peer discovery
+        #[arg(long)]
+        dht: bool,
+        /// DHT UDP port
+        #[arg(long, default_value = "6881")]
+        dht_port: u16,
+        /// DHT bootstrap node address (host:port)
+        #[arg(long)]
+        dht_bootstrap: Option<String>,
+        /// Disable NAT traversal (UPnP/STUN)
+        #[arg(long)]
+        no_nat: bool,
     },
     /// Download a file
     Download {
@@ -64,15 +76,24 @@ async fn main() -> Result<()> {
             bootstrap,
             name,
             discovery,
+            dht,
+            dht_port,
+            dht_bootstrap,
+            no_nat,
         } => {
             let config = Config {
                 port,
                 shared_dir: dir,
                 bootstrap_peer: bootstrap,
                 node_name: name.unwrap_or_else(|| format!("Node-{}", port)),
-                discovery_port: if discovery { Some(9999) } else { None }, // ✅ Added discovery_port
+                discovery_port: if discovery { Some(9999) } else { None },
+                max_upload_speed: None,
+                max_download_speed: None,
+                dht_enabled: dht,
+                dht_port: Some(dht_port),
+                dht_bootstrap,
+                nat_traversal_enabled: !no_nat,
             };
-
             let mut node = Node::new(config).await?;
             node.start().await?;
         }
@@ -83,8 +104,13 @@ async fn main() -> Result<()> {
                 bootstrap_peer: Some(peer),
                 node_name: "Downloader".to_string(),
                 discovery_port: None, // ✅ Added discovery_port
+                max_upload_speed: None,
+                max_download_speed: None,
+                dht_enabled: false,
+                dht_port: Some(6881),
+                dht_bootstrap: None,
+                nat_traversal_enabled: true,
             };
-
             let mut node = Node::new(config).await?;
             node.download_file(&hash, &output).await?;
             println!("Download completed: {:?}", output);
@@ -96,8 +122,13 @@ async fn main() -> Result<()> {
                 bootstrap_peer: Some(peer),
                 node_name: "Lister".to_string(),
                 discovery_port: None, // ✅ Added discovery_port
+                max_upload_speed: None,
+                max_download_speed: None,
+                dht_enabled: false,
+                dht_port: Some(6881),
+                dht_bootstrap: None,
+                nat_traversal_enabled: true,
             };
-
             let mut node = Node::new(config).await?;
             let files = node.list_remote_files().await?;
 

@@ -8,11 +8,12 @@ use tokio::time::{Duration, interval, sleep};
 use uuid::Uuid;
 
 use crate::core::{Config, PeerManager};
-use crate::network::Discovery;
+use crate::network::{DhtNode, Discovery, NatManager};
 use crate::storage::FileInfo;
 use crate::storage::FileManager;
 use crate::transfer::{Downloader, Uploader};
-use crate::utils::{P2PError, Result};
+use crate::utils::{P2PError, RateLimiter, Result};
+use igd_next::PortMappingProtocol;
 
 pub struct Node {
     id: Uuid,
@@ -23,6 +24,10 @@ pub struct Node {
     downloader: Arc<Downloader>,
     uploader: Arc<Uploader>,
     shutdown_tx: Option<mpsc::Sender<()>>,
+    upload_limiter: Option<Arc<RateLimiter>>,
+    download_limiter: Option<Arc<RateLimiter>>,
+    dht_node: Option<Arc<DhtNode>>,
+    nat_manager: Option<Arc<NatManager>>,
 }
 
 impl Node {
@@ -45,6 +50,88 @@ impl Node {
         let downloader = Arc::new(Downloader::new(file_manager.clone(), peer_manager.clone()));
         let uploader = Arc::new(Uploader::new(file_manager.clone()));
 
+        // Create rate limiters from config
+        let upload_limiter = config.max_upload_speed.map(|rate| {
+            Arc::new(RateLimiter::new(rate, rate * 2)) // 2x burst capacity
+        });
+        let download_limiter = config
+            .max_download_speed
+            .map(|rate| Arc::new(RateLimiter::new(rate, rate * 2)));
+
+        // Initialize DHT if enabled
+        let dht_node = if config.dht_enabled {
+            match config.dht_port {
+                Some(port) => {
+                    match DhtNode::new(port).await {
+                        Ok(dht) => {
+                            let dht_arc = Arc::new(dht);
+                            info!("DHT enabled on port {}", port);
+
+                            // Bootstrap if configured
+                            if let Some(ref bootstrap_addr) = config.dht_bootstrap {
+                                if let Ok(addr) = bootstrap_addr.parse() {
+                                    if let Err(e) = dht_arc.bootstrap(addr).await {
+                                        warn!("DHT bootstrap failed: {}", e);
+                                    } else {
+                                        info!("DHT bootstrapped via {}", bootstrap_addr);
+                                    }
+                                }
+                            }
+
+                            Some(dht_arc)
+                        }
+                        Err(e) => {
+                            warn!("Failed to initialize DHT: {}", e);
+                            None
+                        }
+                    }
+                }
+                None => {
+                    warn!("DHT enabled but no port configured");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        // Initialize NAT Manager
+        let nat_manager = if config.nat_traversal_enabled {
+            let manager = Arc::new(NatManager::new(true));
+            let manager_clone = manager.clone();
+            let port = config.port;
+            let dht_port = config.dht_port;
+            
+            // Perform NAT operations in background to avoid blocking startup
+            tokio::spawn(async move {
+                // Map TCP port for file transfer
+                if port > 0 {
+                    match manager_clone.map_port(port, PortMappingProtocol::TCP).await {
+                        Ok(addr) => info!("Public address for TCP (File Transfer): {}", addr),
+                        Err(e) => warn!("Failed to map TCP port {}: {}", port, e),
+                    }
+                }
+                
+                // Map UDP port for DHT if enabled
+                if let Some(udp_port) = dht_port {
+                    match manager_clone.map_port(udp_port, PortMappingProtocol::UDP).await {
+                        Ok(addr) => info!("Public address for UDP (DHT): {}", addr),
+                        Err(e) => warn!("Failed to map UDP port {}: {}", udp_port, e),
+                    }
+                }
+                
+                // Discover public IP via STUN
+                match manager_clone.discover_public_ip().await {
+                    Ok(ip) => info!("Public IP discovered via STUN: {}", ip),
+                    Err(e) => warn!("Failed to discover public IP via STUN: {}", e),
+                }
+            });
+            
+            Some(manager)
+        } else {
+            None
+        };
+
         Ok(Self {
             id,
             config,
@@ -54,6 +141,10 @@ impl Node {
             downloader,
             uploader,
             shutdown_tx: None,
+            upload_limiter,
+            download_limiter,
+            dht_node,
+            nat_manager,
         })
     }
 
@@ -79,6 +170,15 @@ impl Node {
 
         // Start discovery service
         self.start_discovery_service().await?;
+
+        // Start DHT service if enabled
+        if let Some(ref dht) = self.dht_node {
+            let dht_clone = dht.clone();
+            tokio::spawn(async move {
+                dht_clone.start().await;
+            });
+            info!("DHT service started");
+        }
 
         // Start accepting connections
         if self.config.port > 0 {
@@ -157,6 +257,8 @@ impl Node {
     fn start_connection_acceptor(&self, listener: TcpListener) {
         let peer_manager = self.peer_manager.clone();
         let uploader = self.uploader.clone();
+        let upload_limiter = self.upload_limiter.clone();
+        let download_limiter = self.download_limiter.clone();
 
         tokio::spawn(async move {
             loop {
@@ -166,11 +268,19 @@ impl Node {
 
                         let peer_manager = peer_manager.clone();
                         let uploader = uploader.clone();
+                        let upload_limiter = upload_limiter.clone();
+                        let download_limiter = download_limiter.clone();
 
                         tokio::spawn(async move {
-                            if let Err(e) =
-                                Self::handle_new_connection(stream, addr, peer_manager, uploader)
-                                    .await
+                            if let Err(e) = Self::handle_new_connection(
+                                stream,
+                                addr,
+                                peer_manager,
+                                uploader,
+                                upload_limiter,
+                                download_limiter,
+                            )
+                            .await
                             {
                                 error!("Failed to handle connection from {}: {}", addr, e);
                             }
@@ -190,8 +300,11 @@ impl Node {
         addr: SocketAddr,
         peer_manager: Arc<RwLock<PeerManager>>,
         uploader: Arc<Uploader>,
+        upload_limiter: Option<Arc<RateLimiter>>,
+        download_limiter: Option<Arc<RateLimiter>>,
     ) -> Result<()> {
-        let peer = crate::core::Peer::new(Uuid::new_v4(), addr, stream).await?;
+        // Use download_limiter for incoming connections (we receive data)
+        let peer = crate::core::Peer::new(Uuid::new_v4(), addr, stream, download_limiter).await?;
         let peer_id = peer.id;
 
         info!("New peer connected: {} from {}", peer_id, addr);
@@ -261,7 +374,10 @@ impl Node {
         .map_err(|e| P2PError::ConnectionFailed(format!("Bootstrap connection failed: {}", e)))?;
 
         let addr = stream.peer_addr()?;
-        let peer = crate::core::Peer::new(Uuid::new_v4(), addr, stream).await?;
+        // Use upload_limiter for outgoing connections (we send data)
+        let peer =
+            crate::core::Peer::new(Uuid::new_v4(), addr, stream, self.upload_limiter.clone())
+                .await?;
 
         // ✅ Add handshake timeout
         let handshake = crate::core::Message::handshake(self.id, self.config.node_name.clone());

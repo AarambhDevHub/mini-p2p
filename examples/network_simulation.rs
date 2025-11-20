@@ -42,6 +42,12 @@ async fn main() -> mini_p2p::Result<()> {
             bootstrap_peer: bootstrap,
             node_name: name.to_string(),
             discovery_port, // ✅ Added discovery_port field
+            max_upload_speed: None,
+            max_download_speed: None,
+            dht_enabled: false,
+            dht_port: Some(6881),
+            dht_bootstrap: None,
+            nat_traversal_enabled: false,
         };
 
         let handle = tokio::spawn(async move {
