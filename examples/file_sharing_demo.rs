@@ -24,6 +24,12 @@ async fn main() -> mini_p2p::Result<()> {
         bootstrap_peer: None,
         node_name: "SeedNode".to_string(),
         discovery_port: Some(9999), // ✅ Only seed node runs discovery
+        max_upload_speed: None,
+        max_download_speed: None,
+        dht_enabled: false,
+        dht_port: Some(6881),
+        dht_bootstrap: None,
+        nat_traversal_enabled: true,
     };
 
     let seed_handle = tokio::spawn(async move {
@@ -49,6 +55,12 @@ async fn main() -> mini_p2p::Result<()> {
             bootstrap_peer: Some("127.0.0.1:8080".to_string()),
             node_name: "DownloaderNode".to_string(),
             discovery_port: None, // ✅ No discovery service for download node
+            max_upload_speed: None,
+            max_download_speed: None,
+            dht_enabled: false,
+            dht_port: Some(6881),
+            dht_bootstrap: None,
+            nat_traversal_enabled: true,
         };
 
         match Node::new(download_config).await {

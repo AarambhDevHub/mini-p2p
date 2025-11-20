@@ -4,14 +4,14 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
 use crate::core::protocol::{Message, MessageType};
+use crate::network::Transport;
 use crate::storage::FileInfo;
-use crate::utils::{P2PError, Result};
+use crate::utils::{P2PError, RateLimiter, Result};
 
 #[derive(Debug, Clone)]
 pub struct PeerInfo {
@@ -27,10 +27,16 @@ pub struct Peer {
     pub name: String,
     stream: Arc<Mutex<TcpStream>>,
     last_ping: Arc<Mutex<Instant>>,
+    rate_limiter: Option<Arc<RateLimiter>>,
 }
 
 impl Peer {
-    pub async fn new(id: Uuid, addr: SocketAddr, stream: TcpStream) -> Result<Self> {
+    pub async fn new(
+        id: Uuid,
+        addr: SocketAddr,
+        stream: TcpStream,
+        rate_limiter: Option<Arc<RateLimiter>>,
+    ) -> Result<Self> {
         // ✅ Enable TCP keep-alive to maintain connections
         stream
             .set_nodelay(true)
@@ -42,6 +48,7 @@ impl Peer {
             name: format!("Peer-{}", addr.port()),
             stream: Arc::new(Mutex::new(stream)),
             last_ping: Arc::new(Mutex::new(Instant::now())),
+            rate_limiter,
         })
     }
 
@@ -49,13 +56,10 @@ impl Peer {
         let mut stream = self.stream.lock().await;
         let serialized = serde_json::to_vec(&message)
             .map_err(|e| P2PError::SerializationError(e.to_string()))?;
-        let len = serialized.len() as u32;
 
         // Add timeout for network operations
         tokio::time::timeout(Duration::from_secs(5), async {
-            stream.write_u32(len).await?;
-            stream.write_all(&serialized).await?;
-            stream.flush().await
+            Transport::send_data(&mut stream, &serialized, self.rate_limiter.as_deref()).await
         })
         .await
         .map_err(|_| P2PError::NetworkError("Send timeout".to_string()))??;
@@ -68,16 +72,8 @@ impl Peer {
         let mut stream = self.stream.lock().await;
 
         // Add timeout for receive operations
-        let (len, buffer) = tokio::time::timeout(Duration::from_secs(10), async {
-            let len = stream.read_u32().await?;
-            if len > 10_000_000 {
-                // 10MB limit
-                return Err(P2PError::MessageTooLarge(len as usize));
-            }
-
-            let mut buffer = vec![0u8; len as usize];
-            stream.read_exact(&mut buffer).await?;
-            Ok((len, buffer))
+        let buffer = tokio::time::timeout(Duration::from_secs(10), async {
+            Transport::receive_data(&mut stream, 10_000_000, self.rate_limiter.as_deref()).await
         })
         .await
         .map_err(|_| P2PError::NetworkError("Receive timeout".to_string()))??;

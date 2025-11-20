@@ -24,7 +24,8 @@ async-trait = "0.1"
 futures = "0.3"
 rand = "0.8"
 chrono = { version = "0.4.41", features = ["serde"] }
-socket2 = { version = "0.5", features = ["all"] }  # ✅ Add "all" feature
+socket2 = { version = "0.5", features = ["all"] }
+igd-next = "0.14"
 
 [dev-dependencies]
 tempfile = "3.0"

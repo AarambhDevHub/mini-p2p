@@ -38,6 +38,12 @@ async fn main() -> mini_p2p::Result<()> {
         bootstrap_peer: None,
         node_name: "ReliableSeed".to_string(),
         discovery_port: Some(discovery_port),
+        max_upload_speed: None,
+        max_download_speed: None,
+        dht_enabled: false,
+        dht_port: Some(6881),
+        dht_bootstrap: None,
+        nat_traversal_enabled: false,
     };
 
     let bootstrap_addr = format!("127.0.0.1:{}", seed_port);
@@ -106,6 +112,12 @@ async fn perform_download_with_retry(
         bootstrap_peer: Some(bootstrap_addr),
         node_name: "ReliableDownloader".to_string(),
         discovery_port: None,
+        max_upload_speed: None,
+        max_download_speed: None,
+        dht_enabled: false,
+        dht_port: Some(6881),
+        dht_bootstrap: None,
+        nat_traversal_enabled: false,
     };
 
     // ✅ Fixed: Direct download without problematic retry closure

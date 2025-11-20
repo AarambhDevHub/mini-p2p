@@ -42,6 +42,9 @@ pub enum P2PError {
 
     #[error("Configuration error: {0}")]
     ConfigError(String),
+
+    #[error("System error: {0}")]
+    SystemError(String),
 }
 
 impl From<std::io::Error> for P2PError {

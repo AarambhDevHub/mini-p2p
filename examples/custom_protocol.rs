@@ -24,6 +24,12 @@ async fn main() -> mini_p2p::Result<()> {
         bootstrap_peer: None,
         node_name: "CustomProtocolNode".to_string(),
         discovery_port: Some(9999), // ✅ Added discovery_port
+        max_upload_speed: None,
+        max_download_speed: None,
+        dht_enabled: false,
+        dht_port: Some(6881),
+        dht_bootstrap: None,
+        nat_traversal_enabled: true,
     };
 
     let mut node = Node::new(config).await?;
